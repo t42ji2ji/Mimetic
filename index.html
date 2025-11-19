@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Mimetic Trap | Social Media & Girard</title>
+    <style>
+        :root {
+            --bg: #050505;
+            --text: #f0f0f0;
+            --orb-model: #ffffff; /* The Model */
+            --orb-user: #e0e0e0;  /* The Subject */
+            --grid-color: rgba(50, 100, 255, 0.15);
+            --accent-red: #ff3333;
+            --accent-blue: #3366ff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Helvetica Neue', 'Arial', sans-serif;
+            overflow-x: hidden;
+            overscroll-behavior-y: none;
+        }
+
+        /* --- Typography --- */
+        h1, h2, h3, p, li, .subtitle {
+            color: #fff;
+            mix-blend-mode: difference; /* 確保在任何背景上可讀 */
+            position: relative;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-weight: 800;
+            font-size: clamp(2.5rem, 5vw, 5rem);
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 300;
+        }
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            max-width: 540px;
+            font-weight: 300;
+            opacity: 0.9;
+            margin: 0 auto 1.5rem auto;
+        }
+
+        ul {
+            text-align: left;
+            max-width: 500px;
+            margin: 0 auto;
+            list-style: none;
+        }
+
+        li {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+            position: relative;
+            opacity: 0.8;
+        }
+
+        li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--accent-blue);
+        }
+
+        .subtitle {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 2rem;
+            color: #aaa;
+        }
+
+        .highlight {
+            color: #aaa; /* In difference mode, this looks distinct */
+            font-weight: 600;
+            border-bottom: 1px solid #fff;
+        }
+
+        /* --- Layout --- */
+        .viewport {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+            overflow: hidden;
+        }
+
+        .scroll-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+        }
+
+        section {
+            min-height: 120vh; /* 增加高度，讓滾動更從容 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+            opacity: 0;
+            will-change: opacity, transform;
+        }
+
+        /* 最後的總結卡片 */
+        .conclusion-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 3rem 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            max-width: 700px;
+            margin: 0 auto;
+            text-align: left;
+            pointer-events: auto; /* 允許選取文字 */
+            transform: translateY(50px);
+            opacity: 0;
+            transition: all 0.8s ease-out;
+        }
+        
+        .conclusion-card.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .conclusion-card h2 {
+            mix-blend-mode: normal; /* Reset blend mode for card */
+            color: #fff;
+        }
+        .conclusion-card p, .conclusion-card li {
+            mix-blend-mode: normal;
+            color: #ddd;
+        }
+        .conclusion-card li::before {
+            color: var(--accent-red);
+        }
+
+        /* --- Visual Engine --- */
+        
+        /* 背景網格 (代表網路/矩陣) */
+        .grid-floor {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transform: rotateX(60deg) translateY(-20%);
+            opacity: 0; /* 初始隱藏 */
+            transition: opacity 1s ease;
+        }
+
+        .stage {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            filter: url('#liquidFilter');
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            will-change: transform, background;
+        }
+
+        /* The Model (Influencer/King/Peer) */
+        .orb-model {
+            width: 160px;
+            height: 160px;
+            background: var(--orb-model);
+            box-shadow: inset -20px -20px 50px rgba(0,0,0,0.5);
+            z-index: 2;
+        }
+
+        /* The Subject (You) */
+        .orb-user {
+            width: 120px;
+            height: 120px;
+            background: var(--orb-user);
+            box-shadow: inset -10px -10px 30px rgba(0,0,0,0.5);
+            z-index: 3;
+        }
+
+        /* Notification Particles (The Noise) */
+        .particle {
+            position: absolute;
+            background: #fff;
+            border-radius: 50%;
+            opacity: 0;
+        }
+
+        /* --- UI Elements --- */
+        .progress-line {
+            position: fixed;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 150px;
+            width: 1px;
+            background: rgba(255,255,255,0.1);
+            z-index: 50;
+        }
+        .progress-indicator {
+            width: 100%;
+            background: #fff;
+            height: 0%;
+        }
+
+        /* Scanline Effect for "Internet" feel */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px;
+            z-index: 5;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 1s;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5rem; }
+            .orb-model { width: 120px; height: 120px; }
+            .orb-user { width: 90px; height: 90px; }
+            .progress-line { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scanlines" id="scanlines"></div>
+    
+    <div class="progress-line">
+        <div class="progress-indicator" id="progressBar"></div>
+    </div>
+
+    <!-- 3D Stage -->
+    <div class="viewport">
+        <div class="grid-floor" id="gridFloor"></div>
+        <div class="stage">
+            <div class="orb orb-model" id="orbModel"></div> <!-- 被模仿者 -->
+            <div class="orb orb-user" id="orbUser"></div>   <!-- 你 -->
+            <!-- Particles for noise -->
+            <div class="particle" style="width: 10px; height: 10px;" id="p1"></div>
+            <div class="particle" style="width: 15px; height: 15px;" id="p2"></div>
+            <div class="particle" style="width: 8px; height: 8px;" id="p3"></div>
+            <div class="particle" style="width: 20px; height: 20px;" id="scapegoat"></div>
+        </div>
+    </div>
+
+    <!-- SVG Filter (The Glue) -->
+    <svg style="position: absolute; width: 0; height: 0;">
+        <defs>
+            <filter id="liquidFilter">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo" />
+                <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+            </filter>
+        </defs>
+    </svg>
+
+    <!-- Content -->
+    <div class="scroll-container">
+        
+        <section>
+            <span class="subtitle">01. THE EXTERNAL MEDIATOR</span>
+            <h1>The Distant Ideal</h1>
+            <p>曾經，我們模仿國王、聖人或神祇。<br>他們高高在上，遙不可及。</p>
+            <p>因為距離遙遠，我們崇拜他們，<br>但永遠不會嘗試與他們競爭。<br><span class="highlight">距離帶來了和平。</span></p>
+        </section>
+
+        <section>
+            <span class="subtitle">02. THE FLATTENING</span>
+            <h1>平等的代價</h1>
+            <p>現代社會推倒了階級，這聽起來很美好。<br>但副作用是：所有的「外部中介」都消失了。</p>
+            <p>每個人都變得一樣。每個人都是你的同儕。</p>
+        </section>
+
+        <section>
+            <span class="subtitle">03. THE ILLUSION OF PROXIMITY</span>
+            <h1>網路的近距離幻覺</h1>
+            <p>社群媒體加劇了這個問題。<br>Instagram 讓陌生人看起來像鄰居，<br>KOL 讓成功看起來觸手可及。</p>
+            <p>他們不再是遙遠的偶像，<br>他們變成了「就在你身邊」的潛在對手。</p>
+        </section>
+
+        <section>
+            <span class="subtitle">04. INTERNAL MEDIATION</span>
+            <h1>內部的戰爭</h1>
+            <p>當模仿對象與我們距離太近，<br>崇拜瞬間轉化為嫉妒。</p>
+            <p>你憤怒，不是因為觀點不同，<br>而是因為他們是你慾望的<span class="highlight">障礙與鏡像</span>。</p>
+        </section>
+
+        <section>
+            <span class="subtitle">05. THE SCAPEGOAT</span>
+            <h1>網路獵巫</h1>
+            <p>嫉妒與焦慮累積到極限，必須尋找出口。<br>於是我們在網路上尋找替罪羊。</p>
+            <p>透過集體攻擊某個人，<br>我們獲得了短暫的、虛假的連結感。</p>
+        </section>
+
+        <!-- 結尾回顧章節 -->
+        <section style="min-height: 100vh; justify-content: flex-end; padding-bottom: 10vh;">
+            <div class="conclusion-card" id="conclusionCard">
+                <span class="subtitle" style="color: #ff3333; margin-bottom: 1rem;">FINAL REFLECTION</span>
+                <h2 style="color: #fff; margin-bottom: 1.5rem;">問問自己：這是你的戰場嗎？</h2>
+                <p style="color: #ddd; margin-bottom: 2rem;">當你在網路上感到憤怒時，試著辨識這是否為「替代性的競爭焦慮」：</p>
+                <ul style="color: #ddd;">
+                    <li><strong>辨識距離：</strong>這個發文者是真實的威脅，還是被網路拉近的幻覺？</li>
+                    <li><strong>區分中介：</strong>他是外部中介（遙遠的參考點）還是內部中介（你的對手）？</li>
+                    <li><strong>拒絕模仿：</strong>如果他離你的生活很遠，你為什麼要被捲入他的慾望遊戲？</li>
+                </ul>
+                <p style="margin-top: 2rem; font-size: 0.9rem; opacity: 0.6;">THE MIMETIC TRAP PROJECT</p>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const config = {
+            lerpSpeed: 0.08,
+            w: window.innerWidth,
+            h: window.innerHeight
+        };
+
+        // --- Elements ---
+        const orbModel = document.getElementById('orbModel'); // The King/Peer
+        const orbUser = document.getElementById('orbUser');   // You
+        const particles = [document.getElementById('p1'), document.getElementById('p2'), document.getElementById('p3')];
+        const scapegoat = document.getElementById('scapegoat');
+        
+        const gridFloor = document.getElementById('gridFloor');
+        const scanlines = document.getElementById('scanlines');
+        const progressBar = document.getElementById('progressBar');
+        const sections = document.querySelectorAll('section');
+        const conclusionCard = document.getElementById('conclusionCard');
+
+        // --- State ---
+        let scrollTarget = 0;
+        let scrollCurrent = 0;
+
+        // --- Animation Loop ---
+        function animate() {
+            // Scroll Math
+            const maxScroll = document.body.scrollHeight - window.innerHeight;
+            scrollTarget = window.scrollY / maxScroll;
+            scrollCurrent += (scrollTarget - scrollCurrent) * config.lerpSpeed;
+            
+            // Clamp 0-1
+            const p = Math.max(0, Math.min(1, scrollCurrent));
+            
+            progressBar.style.height = `${p * 100}%`;
+
+            renderVisuals(p);
+            renderText();
+
+            requestAnimationFrame(animate);
+        }
+
+        function renderVisuals(p) {
+            const time = Date.now() * 0.001;
+            const floatY = Math.sin(time) * 10;
+
+            // --- Phase 1: External Mediation (0 - 0.25) ---
+            // Model is high above (Vertical Hierarchy), User is small below
+            let modelY = -250; 
+            let modelX = 0;
+            let userY = 200;
+            let userX = 0;
+            let userScale = 0.6;
+
+            // --- Phase 2: The Flattening (0.25 - 0.5) ---
+            // Model descends, User grows, Grid appears
+            if (p > 0.1) {
+                const phase = smoothStep(0.1, 0.4, p);
+                // Model comes down from -250 to 0
+                modelY = -250 + (phase * 250); 
+                // User comes up from 200 to 0
+                userY = 200 - (phase * 200);
+                // Separation on X axis begins
+                modelX = -phase * 120; // Move Left
+                userX = phase * 120;   // Move Right
+                userScale = 0.6 + (phase * 0.4); // Grow to 1.0
+
+                // Grid Opacity
+                gridFloor.style.opacity = phase;
+                scanlines.style.opacity = phase * 0.5;
+            }
+
+            // --- Phase 3: Internal Mediation / Conflict (0.5 - 0.8) ---
+            // They are side by side, shaking, merging
+            let shake = 0;
+            let colorShift = 0; // 0 = normal, 1 = red
+
+            if (p > 0.4) {
+                // Base separation
+                modelX = -120;
+                userX = 120;
+                modelY = 0;
+                userY = 0;
+
+                // Move closer to merge
+                const approach = smoothStep(0.4, 0.65, p);
+                const gap = 120 - (approach * 90); // End at 30px gap
+                
+                // Shake intensity
+                if (p > 0.55 && p < 0.85) {
+                    const tension = smoothStep(0.55, 0.7, p); // Ramp up
+                    shake = tension * 20; 
+                    colorShift = tension;
+                    
+                    // Particle Chaos (Social Noise)
+                    particles.forEach((pt, i) => {
+                        pt.style.opacity = tension;
+                        const px = (Math.sin(time * (i+1)) * 200) * tension;
+                        const py = (Math.cos(time * (i+2)) * 100) * tension;
+                        pt.style.transform = `translate(${px}px, ${py}px)`;
+                    });
+                } else {
+                    particles.forEach(pt => pt.style.opacity = 0);
+                }
+
+                modelX = -gap;
+                userX = gap;
+            }
+
+            // --- Phase 4: Scapegoat / Expulsion (0.85+) ---
+            let sgX = 0, sgY = 0, sgOp = 0;
+            if (p > 0.82) {
+                const release = smoothStep(0.82, 0.95, p);
+                
+                // Orbs separate slightly (Relief)
+                modelX -= release * 20;
+                userX += release * 20;
+                
+                // Color cools down
+                colorShift = 1 - release;
+                shake = (1 - release) * 20;
+
+                // Scapegoat flies out
+                sgOp = Math.min(release * 5, 1);
+                sgX = release * 400; // Fly right
+                sgY = release * 150; // Fly down
+                
+                // Fade out scene for conclusion text
+                if (p > 0.92) {
+                    const fadeOut = (p - 0.92) * 10;
+                    gridFloor.style.opacity = 1 - fadeOut;
+                    orbModel.style.opacity = 1 - fadeOut;
+                    orbUser.style.opacity = 1 - fadeOut;
+                } else {
+                    orbModel.style.opacity = 1;
+                    orbUser.style.opacity = 1;
+                }
+            }
+
+            // Apply Transforms
+            const rndX = (Math.random()-0.5) * shake;
+            const rndY = (Math.random()-0.5) * shake;
+
+            orbModel.style.transform = `translate(${modelX + rndX}px, ${modelY + floatY + rndY}px)`;
+            orbUser.style.transform = `translate(${userX - rndX}px, ${userY - floatY - rndY}px) scale(${userScale})`;
+            
+            scapegoat.style.transform = `translate(${sgX}px, ${sgY}px)`;
+            scapegoat.style.opacity = sgOp;
+
+            // Color Logic
+            // Model: White -> Red -> White
+            // User: Grey -> Red -> Grey
+            if (colorShift > 0) {
+                const r = 255;
+                const gb = 255 - (colorShift * 200); // To Red
+                const col = `rgb(${r}, ${gb}, ${gb})`;
+                orbModel.style.background = col;
+                orbUser.style.background = col;
+            } else {
+                orbModel.style.background = 'var(--orb-model)';
+                orbUser.style.background = 'var(--orb-user)';
+            }
+        }
+
+        function renderText() {
+            const vh = window.innerHeight;
+            const center = vh / 2;
+
+            sections.forEach((sec, i) => {
+                const rect = sec.getBoundingClientRect();
+                const secCenter = rect.top + (rect.height / 2);
+                const dist = Math.abs(secCenter - center);
+
+                // Logic: Fade in when near center, fade out when leaving
+                // Exception: The last card handles itself via class
+                if (i === sections.length - 1) {
+                    // Conclusion Card Logic
+                    if (rect.top < vh * 0.7) {
+                        conclusionCard.classList.add('visible');
+                    } else {
+                        conclusionCard.classList.remove('visible');
+                    }
+                    sec.style.opacity = 1; // Section container stays visible
+                    return;
+                }
+
+                // Normal Sections
+                let op = 1 - (dist / (vh * 0.4));
+                op = Math.max(0, Math.min(1, op));
+                
+                // Slight parallax
+                const y = (dist > 0 ? (secCenter > center ? 50 : -50) : 0) * (1 - op);
+
+                sec.style.opacity = op;
+                sec.style.transform = `translateY(${y}px)`;
+            });
+        }
+
+        // Helper: Smoothstep for smoother animation transitions
+        function smoothStep(min, max, value) {
+            const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+            return x * x * (3 - 2 * x);
+        }
+
+        // Init
+        animate();
+        
+        // Resize handler
+        window.addEventListener('resize', () => {
+            config.w = window.innerWidth;
+            config.h = window.innerHeight;
+        });
+
+    </script>
+</body>
+</html>
